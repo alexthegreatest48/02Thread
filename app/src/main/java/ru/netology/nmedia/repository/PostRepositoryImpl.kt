@@ -36,7 +36,7 @@ class PostRepositoryImpl: PostRepository {
     }
 
     override fun likeById(id: Long) {
-        // TODO: do this in homework
+        // TODO
     }
 
     override fun save(post: Post) {
