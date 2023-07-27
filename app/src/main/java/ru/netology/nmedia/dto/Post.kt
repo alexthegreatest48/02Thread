@@ -7,5 +7,6 @@ data class Post(
     val published: String,
     var likedByMe: Boolean,
     var likes: Int = 0,
+    val authorAvatar: String
 )
 

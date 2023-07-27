@@ -7,6 +7,7 @@ import ru.netology.nmedia.model.FeedModel
 import ru.netology.nmedia.repository.*
 import ru.netology.nmedia.util.SingleLiveEvent
 import java.io.IOException
+import java.lang.Exception
 import kotlin.concurrent.thread
 
 private val empty = Post(
@@ -15,7 +16,8 @@ private val empty = Post(
     author = "",
     likedByMe = false,
     likes = 0,
-    published = ""
+    published = "",
+    authorAvatar = ""
 )
 
 class PostViewModel(application: Application) : AndroidViewModel(application) {
@@ -33,15 +35,16 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun loadPosts() {
-        thread {
-            _data.postValue(FeedModel(loading = true))
-            try {
-                val posts = repository.getAll()
-                FeedModel(posts = posts, empty = posts.isEmpty())
-            } catch (e: IOException) {
-                FeedModel(error = true)
-            }.also(_data::postValue)
-        }
+            _data.value = FeedModel(loading = true)
+        repository.getAll(object: PostRepository.PostCallback<List<Post>>{
+            override fun onSuccess(data: List<Post>) {
+                _data.postValue(FeedModel(posts = data, empty = data.isEmpty()))
+            }
+
+            override fun onError(e: Exception) {
+                _data.postValue(FeedModel(error = true))
+            }
+        })
     }
 
     fun save() {
@@ -67,30 +70,46 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun likeById(post: Post) {
-         var likedPost : Post
-       thread {
            if (post.likedByMe){
-               post.likedByMe=!post.likedByMe
-               post.likes = post.likes - 1
-               likedPost = repository.unlikeById(post)
-           }
-           else{
-               post.likedByMe=!post.likedByMe
-               post.likes = post.likes + 1
-               likedPost = repository.likeById(post)
-           }
-
-           _data.postValue(
-               _data.value?.copy(posts = _data.value?.posts.orEmpty()
-                   .map {
-                       if (it.id == post.id) {
-                           likedPost
-                       } else {
-                           it
-                       }
+               repository.unlikeById(post, object: PostRepository.PostCallback<Post>{
+                   override fun onSuccess(data: Post) {
+                       _data.postValue(
+                           _data.value?.copy(posts = _data.value?.posts.orEmpty()
+                               .map {
+                                   if (it.id == post.id) {
+                                       data
+                                   } else {
+                                       it
+                                   }
+                               }
+                           )
+                       )
                    }
-               )
-           )
+                   override fun onError(e: Exception) {
+                       _data.postValue(FeedModel(error = true))
+                   }
+
+               })
+           }else{
+               repository.likeById(post, object: PostRepository.PostCallback<Post>{
+                   override fun onSuccess(data: Post) {
+                       _data.postValue(
+                           _data.value?.copy(posts = _data.value?.posts.orEmpty()
+                               .map {
+                                   if (it.id == post.id) {
+                                       data
+                                   } else {
+                                       it
+                                   }
+                               }
+                           )
+                       )
+                   }
+
+                   override fun onError(e: Exception) {
+                       _data.postValue(FeedModel(error = true))
+                   }
+               })
        }
     }
 
